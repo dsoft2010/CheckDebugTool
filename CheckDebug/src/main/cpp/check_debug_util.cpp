@@ -26,19 +26,21 @@ Java_kr_ds_util_CheckDebugNativeLib_isDebugToolTracerPid(JNIEnv *env, jobject th
     size_t strSize = strlen(str);
     FILE *file = fopen("/proc/self/status", "r");
 
+    LOGD("isDebugToolTracerPid file = %p", file);
+
     while (fgets(buf, 512, file)) {
         if (!strncmp(buf, str, strSize)) {
             sscanf(buf, "TracerPid: %d", &TPid);
             if (TPid != 0) {
                 fclose(file);
-                LOGD("isDebugToolTracerPid %d", true);
+                LOGD("isDebugToolTracerPid true");
                 return true;
             }
         }
     }
 
     fclose(file);
-    LOGD("isDebugToolTracerPid %d", false);
+    LOGD("isDebugToolTracerPid false");
     return false;
 }
 extern "C"
@@ -51,27 +53,28 @@ Java_kr_ds_util_CheckDebugNativeLib_isDebugToolCmdLine(JNIEnv *env, jobject thiz
     snprintf(filePath, 24, "/proc/%d/cmdline", getppid());
     file = fopen(filePath, "r");
     if (file == nullptr) {
-        LOGD("isDebugToolCmdLine %d", false);
+        LOGD("isDebugToolCmdLine nullptr false");
         return false;
     }
     fgets(fileRead, 128, file);
     fclose(file);
 
     if (!strcmp(fileRead, "gdb")) {
-        LOGD("isDebugToolCmdLine gdb %d", true);
+        LOGD("isDebugToolCmdLine gdb true");
         return true;
     }
 
     if (!strcmp(fileRead, "lldb")) {
-        LOGD("isDebugToolCmdLine lldb %d", true);
+        LOGD("isDebugToolCmdLine lldb true");
         return true;
     }
 
+    LOGD("isDebugToolCmdLine false");
     return false;
 }
 extern "C"
 JNIEXPORT jint JNICALL
 Java_kr_ds_util_CheckDebugNativeLib_version(JNIEnv *env, jobject thiz) {
-    LOGD("version %d", true);
+    LOGD("version 1");
     return 1;
 }
