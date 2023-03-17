@@ -17,16 +17,33 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        Timber.d("CheckDebugTool version=${checkDebugNativeLib.version()}")
+
         val textState: TextView = findViewById(R.id.textState)
 
         textState.text = when {
-            !BuildConfig.DEBUG && checkDebugNativeLib.isRooted() -> {
+            checkDebugNativeLib.isRooted() -> {
                 val message = "루팅됨"
                 Timber.d(message)
                 message
             }
             !BuildConfig.DEBUG && checkDebugNativeLib.isActiveDebugTool() -> {
                 val message = "디버깅 툴(커맨드 라인 or 프로세스) 감지됨"
+                Timber.d(message)
+                message
+            }
+            !BuildConfig.DEBUG && checkDebugNativeLib.isDebuggable(this) -> {
+                val message = "디버깅 활성화 감지됨"
+                Timber.d(message)
+                message
+            }
+            !BuildConfig.DEBUG && checkDebugNativeLib.isDebuggerConnected() -> {
+                val message = "디버거 연결 감지됨"
+                Timber.d(message)
+                message
+            }
+            checkDebugNativeLib.isDebugByTimerChecks() -> {
+                val message = "디버거 연결 (Timer Checks) 감지됨"
                 Timber.d(message)
                 message
             }

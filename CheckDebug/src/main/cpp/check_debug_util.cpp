@@ -72,9 +72,12 @@ Java_kr_ds_util_CheckDebugNativeLib_isDebugToolCmdLine(JNIEnv *env, jobject thiz
     LOGD("isDebugToolCmdLine false");
     return false;
 }
+
+const int version = 1;
+
 extern "C"
 JNIEXPORT jint JNICALL
 Java_kr_ds_util_CheckDebugNativeLib_version(JNIEnv *env, jobject thiz) {
-    LOGD("version 1");
-    return 1;
+    LOGD("version = %d", version);
+    return version;
 }

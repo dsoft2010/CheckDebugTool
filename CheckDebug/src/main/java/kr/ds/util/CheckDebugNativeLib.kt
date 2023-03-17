@@ -1,9 +1,12 @@
 package kr.ds.util
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
+import android.os.Build
 import android.os.Debug
 import android.provider.Settings
 import java.io.File
+
 
 class CheckDebugNativeLib {
 
@@ -11,14 +14,13 @@ class CheckDebugNativeLib {
      * 루팅 여부 체크
      */
     fun isRooted(): Boolean {
-        val isResult: Boolean
-        val isRooting: Boolean = try {
+        val isRootingByExecCmd: Boolean = try {
             Runtime.getRuntime().exec("su")
             true
         } catch (e: java.lang.Exception) {
-            Debug.isDebuggerConnected()
+            false
         }
-        var isRooting2 = false
+        var isRootingByFileExistence = false
         val paths = arrayOf(
             "/sbin/su",
             "/system/su",
@@ -42,11 +44,11 @@ class CheckDebugNativeLib {
         )
         for (p in paths) {
             if (File(p).exists()) {
-                isRooting2 = true
+                isRootingByFileExistence = true
+                break
             }
         }
-        isResult = isRooting2 || isRooting
-        return isResult
+        return isRootingByFileExistence || isRootingByExecCmd || isTestKeyBuild()
     }
 
     /**
@@ -67,6 +69,35 @@ class CheckDebugNativeLib {
      */
     fun isUsbDebuggingEnabled(context: Context) =
         Settings.Global.getInt(context.contentResolver, Settings.Global.ADB_ENABLED) != 0
+
+    /**
+     * Debugging 활성화 여부
+     *
+     * android:debuggable
+     */
+    fun isDebuggable(context: Context) =
+        context.applicationContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+
+    /**
+     * Debugger 연결 여부
+     */
+    fun isDebuggerConnected() = Debug.isDebuggerConnected()
+
+    /**
+     * Debugging 여부 by Timer Checks
+     */
+    fun isDebugByTimerChecks(): Boolean {
+        val start = Debug.threadCpuTimeNanos()
+        for (i in 0 .. 1000000)
+            continue
+        val stop = Debug.threadCpuTimeNanos()
+
+        return stop - start >= 10000000
+    }
+
+    private fun isTestKeyBuild(): Boolean {
+        return Build.TAGS?.let { it.contains("test-keys") } ?: false
+    }
 
     /**
      * Native 라이브러리 버전
