@@ -62,7 +62,7 @@ afterEvaluate {
             release(MavenPublication) {
                 from components.release
                 groupId = 'com.github.dsoft2010'
-                artifactId = 'detect-debugging'
+                artifactId = 'CheckDebugTool'
                 version = '1.1.0'
             }
         }
