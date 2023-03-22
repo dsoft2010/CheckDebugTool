@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.github.dsoft2010'
-version = '1.0.1'
+version = '1.1.0'
 
 android {
     namespace 'kr.ds.util'
@@ -63,7 +63,7 @@ afterEvaluate {
                 from components.release
                 groupId = 'com.github.dsoft2010'
                 artifactId = 'detect-debugging'
-                version = '1.0.1'
+                version = '1.1.0'
             }
         }
     }
