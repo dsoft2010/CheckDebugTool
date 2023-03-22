@@ -48,15 +48,20 @@ private val checkDebugNativeLib by lazy {
 아래와 같이 사용하시면 되고, 샘플 코드 참고하셔도 됩니다.
 ```
 textState.text = when {
-    !BuildConfig.DEBUG && checkDebugNativeLib.isRooted() -> {
+    checkDebugNativeLib.isRooted() -> {
         val message = "루팅됨"
         Timber.d(message)
         message
     }
-    !BuildConfig.DEBUG && checkDebugNativeLib.isActiveDebugTool() -> {
-        val message = "디버깅 툴(커맨드 라인 or 프로세스) 감지됨"
+    checkDebugNativeLib.isActiveDebugTool() -> {
+        val message = "디버깅 툴(커맨드 라인 or 프로세스 or 디버거 연결 or (Timer Checks)) 감지됨"
         Timber.d(message)
         message
+    }
+    !BuildConfig.DEBUG && checkDebugNativeLib.isDebuggable(this) -> {
+	val message = "디버깅 활성화 감지됨"
+	Timber.d(message)
+	message
     }
     !BuildConfig.DEBUG && checkDebugNativeLib.isUsbDebuggingEnabled(this) -> {
         val message = "USB 디버깅 활성화 감지됨"
@@ -75,3 +80,4 @@ textState.text = when {
     }
 }
 ```
+4. 1.1.0 이상은 백그라운드로 디버깅 감지 쓰레드가 동작하여 디버깅이 감지되면 앱이 강제 종료됨  
