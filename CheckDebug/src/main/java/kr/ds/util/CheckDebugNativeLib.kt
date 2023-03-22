@@ -53,16 +53,21 @@ class CheckDebugNativeLib {
 
     /**
      * 디버깅 툴 활성화 여부
+     *
+     * 디버거 연결, CMD 라인, TracerPid, Timber Check 로 확인
      */
     fun isActiveDebugTool(): Boolean {
-        return isDebugToolCmdLine() || isDebugToolTracerPid()
+        return isDebuggerConnected() || isDebugByTimerChecks() || isDebugToolCmdLine() || isDebugToolTracerPid()
     }
 
     /**
      * 개발자 모드 활성화 여부
      */
     fun isDevelopmentSettingsEnabled(context: Context) =
-        Settings.Global.getInt(context.contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED) != 0
+        Settings.Global.getInt(
+            context.contentResolver,
+            Settings.Global.DEVELOPMENT_SETTINGS_ENABLED
+        ) != 0
 
     /**
      * USB Debugging 활성화 여부
@@ -81,14 +86,14 @@ class CheckDebugNativeLib {
     /**
      * Debugger 연결 여부
      */
-    fun isDebuggerConnected() = Debug.isDebuggerConnected()
+    private fun isDebuggerConnected() = Debug.isDebuggerConnected()
 
     /**
      * Debugging 여부 by Timer Checks
      */
-    fun isDebugByTimerChecks(): Boolean {
+    private fun isDebugByTimerChecks(): Boolean {
         val start = Debug.threadCpuTimeNanos()
-        for (i in 0 .. 1000000)
+        for (i in 0..1000000)
             continue
         val stop = Debug.threadCpuTimeNanos()
 
@@ -114,6 +119,17 @@ class CheckDebugNativeLib {
      * 디버깅 툴 cmdline 여부
      */
     private external fun isDebugToolCmdLine(): Boolean
+
+    /**
+     * ptrace 선점을 통한 디버거 process attach 방지
+     *
+     * ** 테스트 중 **
+     *
+     * 이 함수를 실행 한 후에는 isDebugToolTracerPid() 가 항상 true 이다.
+     *
+     * @see <a href=https://mobile-security.gitbook.io/mobile-security-testing-guide/android-testing-guide/0x05j-testing-resiliency-against-reverse-engineering#testing-anti-debugging-detection-mstg-resilience-2>Android Anti-Reversing Defenses</a>
+     */
+    private external fun antiDebug()
 
     companion object {
         // Used to load the 'check_debug_util' library on application startup.
