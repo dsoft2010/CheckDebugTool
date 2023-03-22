@@ -27,23 +27,13 @@ class MainActivity : AppCompatActivity() {
                 Timber.d(message)
                 message
             }
-            !BuildConfig.DEBUG && checkDebugNativeLib.isActiveDebugTool() -> {
-                val message = "디버깅 툴(커맨드 라인 or 프로세스) 감지됨"
+            checkDebugNativeLib.isActiveDebugTool() -> {
+                val message = "디버깅 툴(커맨드 라인 or 프로세스 or 디버거 연결 or (Timer Checks)) 감지됨"
                 Timber.d(message)
                 message
             }
             !BuildConfig.DEBUG && checkDebugNativeLib.isDebuggable(this) -> {
                 val message = "디버깅 활성화 감지됨"
-                Timber.d(message)
-                message
-            }
-            !BuildConfig.DEBUG && checkDebugNativeLib.isDebuggerConnected() -> {
-                val message = "디버거 연결 감지됨"
-                Timber.d(message)
-                message
-            }
-            checkDebugNativeLib.isDebugByTimerChecks() -> {
-                val message = "디버거 연결 (Timer Checks) 감지됨"
                 Timber.d(message)
                 message
             }
