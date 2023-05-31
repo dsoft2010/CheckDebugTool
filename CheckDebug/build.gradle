@@ -66,5 +66,20 @@ afterEvaluate {
                 version = '1.1.0'
             }
         }
+        
+        repositories {
+            maven {
+                name = "GitHubPackages"
+                
+                // Replace GITHUB_USERID with your personal or organisation user ID and 
+                // REPOSITORY with the name of the repository on GitHub
+                url = uri("https://maven.pkg.github.com/dsoft2010/CheckDebugTool")
+
+                credentials {
+                    username = System.getenv("USERNAME")
+                    password = System.getenv("TOKEN")
+                }
+            }
+        }
     }
 }
