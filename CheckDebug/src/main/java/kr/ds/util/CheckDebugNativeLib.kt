@@ -5,7 +5,8 @@ import android.content.pm.ApplicationInfo
 import android.os.Build
 import android.os.Debug
 import android.provider.Settings
-import java.io.File
+import android.util.Log
+import androidx.annotation.Keep
 
 
 class CheckDebugNativeLib {
@@ -14,41 +15,10 @@ class CheckDebugNativeLib {
      * 루팅 여부 체크
      */
     fun isRooted(): Boolean {
-        val isRootingByExecCmd: Boolean = try {
-            Runtime.getRuntime().exec("su")
-            true
-        } catch (e: java.lang.Exception) {
-            false
-        }
-        var isRootingByFileExistence = false
-        val paths = arrayOf(
-            "/sbin/su",
-            "/system/su",
-            "/system/bin/su",
-            "/system/sbin/su",
-            "/system/xbin/su",
-            "/system/xbin/mu",
-            "/system/bin/.ext/.su",
-            "/system/usr/su-backup",
-            "/data/data/com.noshufou.android.su",
-            "/system/app/Superuser.apk",
-            "/system/app/su.apk",
-            "/system/bin/.ext",
-            "/system/xbin/.ext",
-            "/data/local/xbin/su",
-            "/data/local/bin/su",
-            "/system/sd/xbin/su",
-            "/system/bin/failsafe/su",
-            "/data/local/su",
-            "/su/bin/su"
-        )
-        for (p in paths) {
-            if (File(p).exists()) {
-                isRootingByFileExistence = true
-                break
-            }
-        }
-        return isRootingByFileExistence || isRootingByExecCmd || isTestKeyBuild()
+        val rootingByFileExistence = isRootingByFileExistence()
+        val rootingByExecCmd = isRootingByExecCmd()
+        Log.d("CheckDebug", "isRootingByFileExistence: $rootingByFileExistence, isRootingByExecCmd: $rootingByExecCmd")
+        return rootingByFileExistence || rootingByExecCmd || isTestKeyBuild()
     }
 
     /**
@@ -57,7 +27,7 @@ class CheckDebugNativeLib {
      * 디버거 연결, CMD 라인, TracerPid, Timber Check 로 확인
      */
     fun isActiveDebugTool(): Boolean {
-        return isDebuggerConnected() || isDebugByTimerChecks() || isDebugToolCmdLine() || isDebugToolTracerPid()
+        return isDebuggerConnected()  || isDebugToolCmdLine() || isDebugToolTracerPid() || (!BuildConfig.DEBUG && isDebugByTimerChecks())
     }
 
     /**
@@ -78,15 +48,23 @@ class CheckDebugNativeLib {
     /**
      * Debugging 활성화 여부
      *
-     * android:debuggable
+     * android:debuggable or ro.debuggable
      */
-    fun isDebuggable(context: Context) =
-        context.applicationContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+    fun isDebuggable(context: Context): Boolean {
+        val flagDebuggable =
+            context.applicationContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+        Log.d("CheckDebug", "flagDebuggable: $flagDebuggable")
+        return flagDebuggable || isDebugEnabled()
+    }
 
     /**
      * Debugger 연결 여부
      */
-    private fun isDebuggerConnected() = Debug.isDebuggerConnected()
+    private fun isDebuggerConnected(): Boolean {
+        val debuggerConnected = Debug.isDebuggerConnected()
+        Log.d("CheckDebug", "isDebuggerConnected: $debuggerConnected")
+        return debuggerConnected
+    }
 
     /**
      * Debugging 여부 by Timer Checks
@@ -97,11 +75,13 @@ class CheckDebugNativeLib {
             continue
         val stop = Debug.threadCpuTimeNanos()
 
-        return stop - start >= 10000000
+        val result = stop - start >= 10000000
+        Log.d("CheckDebug", "isDebugByTimerChecks: $result")
+        return result
     }
 
     private fun isTestKeyBuild(): Boolean {
-        return Build.TAGS?.let { it.contains("test-keys") } ?: false
+        return Build.TAGS?.contains("test-keys") ?: false
     }
 
     /**
@@ -109,6 +89,23 @@ class CheckDebugNativeLib {
      *
      */
     external fun version(): Int
+
+    /**
+     * 루팅 여부 체크 by File Existence
+     */
+    private external fun isRootingByFileExistence(): Boolean
+
+    /**
+     * 루팅 여부 체크 by Exec Cmd
+     */
+    private external fun isRootingByExecCmd(): Boolean
+
+    /***
+     * Debugging 활성화 여부
+     *
+     * ro.debuggable
+     */
+    private external fun isDebugEnabled(): Boolean
 
     /**
      * 디버깅 툴에 의해 디버그 실행 중인 여부
@@ -127,11 +124,24 @@ class CheckDebugNativeLib {
      *
      * 이 함수를 실행 한 후에는 isDebugToolTracerPid() 가 항상 true 이다.
      *
-     * @see <a href=https://mobile-security.gitbook.io/mobile-security-testing-guide/android-testing-guide/0x05j-testing-resiliency-against-reverse-engineering#testing-anti-debugging-detection-mstg-resilience-2>Android Anti-Reversing Defenses</a>
+     * @see <a href=https://mas.owasp.org/MASTG/0x05j-Testing-Resiliency-Against-Reverse-Engineering/>Android Anti-Reversing Defenses</a>
      */
     private external fun antiDebug()
 
+
+    /**
+     * 디버깅 툴에 의해 디버그 실행 중인지 확인하는 콜백
+     */
+    @Keep
+    interface Callback {
+        fun onDebug()
+    }
+
     companion object {
+
+        external fun startAntiDebugOnBackground(callback: Callback? = null)
+        external fun stopAntiDebugOnBackground()
+
         // Used to load the 'check_debug_util' library on application startup.
         init {
             System.loadLibrary("check_debug_util")
