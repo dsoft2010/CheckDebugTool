@@ -19,3 +19,10 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+-keep class kr.ds.util.CheckDebugNativeLib
+-keepclassmembers class kr.ds.util.CheckDebugNativeLib$Companion {
+    public *;
+}
+-keepclassmembers class kr.ds.util.CheckDebugNativeLib {
+    public *;
+}
