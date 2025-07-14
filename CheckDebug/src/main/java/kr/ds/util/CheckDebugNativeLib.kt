@@ -100,6 +100,24 @@ class CheckDebugNativeLib {
      */
     private external fun isRootingByExecCmd(): Boolean
 
+    /**
+     * 루팅 여부 체크 by File Existence 비동기
+     */
+    private external fun isRootingByFileExistenceAsync(callback: (Boolean) -> Unit)
+
+    /**
+     * 루팅 여부 체크 비동기
+     */
+    fun isRootedAsync(callback: (Boolean) -> Unit) {
+        isRootingByFileExistenceAsync { isRootedByFile ->
+            val isRootedByExec = isRootingByExecCmd()
+            val isTestKey = isTestKeyBuild()
+            val result = isRootedByFile || isRootedByExec || isTestKey
+            Log.d("CheckDebug", "isRootedAsync: $result, isRootedByFile: $isRootedByFile, isRootedByExec: $isRootedByExec, isTestKey: $isTestKey")
+            callback(result)
+        }
+    }
+
     /***
      * Debugging 활성화 여부
      *

@@ -479,3 +479,41 @@ JNIEXPORT jboolean JNICALL
 Java_kr_ds_util_CheckDebugNativeLib_isRootingByExecCmd(JNIEnv *env, jobject) {
     return isCheckExecution() ? JNI_TRUE : JNI_FALSE;
 }
+
+struct CallbackData {
+    JavaVM *vm;
+    jobject callback;
+};
+
+void* rootingCheckThread(void* arg) {
+    CallbackData* data = static_cast<CallbackData*>(arg);
+    JavaVM* vm = data->vm;
+    jobject callback = data->callback;
+
+    JNIEnv* env;
+    vm->AttachCurrentThread(&env, nullptr);
+
+    bool rooted = isRooted();
+
+    jclass callbackClass = env->GetObjectClass(callback);
+    jmethodID onResultMethod = env->GetMethodID(callbackClass, "onResult", "(Z)V
+    env->CallVoidMethod(callback, onResultMethod, rooted);
+
+    env->DeleteGlobalRef(callback);
+    delete data;
+
+    vm->DetachCurrentThread();
+    return nullptr;
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_kr_ds_util_CheckDebugNativeLib_isRootingByFileExistenceAsync(JNIEnv *env, jobject, jobject callback) {
+    pthread_t thread;
+    CallbackData* data = new CallbackData();
+    env->GetJavaVM(&data->vm);
+    data->callback = env->NewGlobalRef(callback);
+
+    pthread_create(&thread, nullptr, rootingCheckThread, data);
+    pthread_detach(thread);
+}
