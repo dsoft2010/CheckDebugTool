@@ -9,7 +9,7 @@ version = '1.2.0'
 
 android {
     namespace 'kr.ds.util'
-    compileSdk 33
+    compileSdk 35
 
     defaultConfig {
         minSdk 23
@@ -34,6 +34,8 @@ android {
         cmake {
             path "src/main/cpp/CMakeLists.txt"
             version "3.18.1"
+            // Passes optional arguments to CMake. NDK 27 and above support flexible page sizes, which can be enabled by passing the
+            // arguments "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
         }
     }
     compileOptions {
@@ -42,6 +44,9 @@ android {
     }
     kotlinOptions {
         jvmTarget = '1.8'
+    }
+    buildFeatures {
+        buildConfig true
     }
 }
 
