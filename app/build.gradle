@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace 'com.example.checkdebugtoolsample'
-    compileSdk 33
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.example.checkdebugtoolsample"
         minSdk 24
-        targetSdk 33
+        targetSdk 35
         versionCode 1
         versionName "1.0"
 
@@ -21,6 +21,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
         }
     }
     compileOptions {
@@ -29,6 +30,9 @@ android {
     }
     kotlinOptions {
         jvmTarget = '1.8'
+    }
+    buildFeatures {
+        buildConfig true
     }
 }
 
