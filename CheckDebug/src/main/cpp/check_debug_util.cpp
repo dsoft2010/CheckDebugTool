@@ -507,6 +507,46 @@ void* rootingCheckThread(void* arg) {
 }
 
 extern "C"
+JNIEXPORT jboolean JNICALL
+Java_kr_ds_util_CheckDebugNativeLib_isRootingByPackageManager(JNIEnv *env, jobject, jobject context) {
+    jclass contextClass = env->GetObjectClass(context);
+    jmethodID getPackageManagerMethod = env->GetMethodID(contextClass, "getPackageManager", "()Landroid/content/pm/PackageManager;");
+    jobject packageManager = env->CallObjectMethod(context, getPackageManagerMethod);
+
+    jclass packageManagerClass = env->GetObjectClass(packageManager);
+    jmethodID getPackageInfoMethod = env->GetMethodID(packageManagerClass, "getPackageInfo", "(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;");
+
+    std::vector<std::string> rootPackages = {
+            "com.noshufou.android.su",
+            "eu.chainfire.supersu",
+            "com.koushikdutta.superuser",
+            "com.thirdparty.superuser",
+            "com.topjohnwu.magisk",
+            "com.playground.rooting"
+    };
+
+    for (const std::string& pkgName : rootPackages) {
+        jstring packageName = env->NewStringUTF(pkgName.c_str());
+        // The second argument to getPackageInfo is flags, 0 is fine for just checking existence.
+        jobject packageInfo = env->CallObjectMethod(packageManager, getPackageInfoMethod, packageName, 0);
+        env->DeleteLocalRef(packageName);
+
+        if (packageInfo != nullptr) {
+            env->DeleteLocalRef(packageInfo);
+            // Found a root package
+            return JNI_TRUE;
+        }
+        // An exception is thrown by getPackageInfo if the package is not found.
+        // We need to clear it to continue.
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+        }
+    }
+
+    return JNI_FALSE;
+}
+
+extern "C"
 JNIEXPORT void JNICALL
 Java_kr_ds_util_CheckDebugNativeLib_isRootingByFileExistenceAsync(JNIEnv *env, jobject, jobject callback) {
     pthread_t thread;

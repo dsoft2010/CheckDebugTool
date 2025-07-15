@@ -2,13 +2,11 @@ package kr.ds.util
 
 import android.content.Context
 import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Debug
 import android.provider.Settings
 import android.util.Log
 import androidx.annotation.Keep
-
 
 class CheckDebugNativeLib {
 
@@ -18,30 +16,9 @@ class CheckDebugNativeLib {
     fun isRooted(context: Context): Boolean {
         val rootingByFileExistence = isRootingByFileExistence()
         val rootingByExecCmd = isRootingByExecCmd()
-        val rootingByPackageName = isRootedByPackageName(context)
+        val rootingByPackageName = isRootingByPackageManager(context)
         Log.d("CheckDebug", "isRootingByFileExistence: $rootingByFileExistence, isRootingByExecCmd: $rootingByExecCmd, isRootingByPackageName: $rootingByPackageName")
         return rootingByFileExistence || rootingByExecCmd || isTestKeyBuild() || rootingByPackageName
-    }
-
-    private fun isRootedByPackageName(context: Context): Boolean {
-        val rootPackages = listOf(
-            "com.noshufou.android.su",
-            "eu.chainfire.supersu",
-            "com.koushikdutta.superuser",
-            "com.thirdparty.superuser",
-            "com.topjohnwu.magisk",
-            "com.playground.rooting"
-        )
-
-        val pm = context.packageManager
-        return rootPackages.any { packageName ->
-            try {
-                pm.getPackageInfo(packageName, 0)
-                true
-            } catch (e: PackageManager.NameNotFoundException) {
-                false
-            }
-        }
     }
 
     /**
@@ -132,6 +109,11 @@ class CheckDebugNativeLib {
     private external fun isRootingByExecCmd(): Boolean
 
     /**
+     * 루팅 여부 체크 by PackageManager
+     */
+    private external fun isRootingByPackageManager(context: Context): Boolean
+
+    /**
      * 루팅 여부 체크 by File Existence 비동기
      */
     private external fun isRootingByFileExistenceAsync(callback: (Boolean) -> Unit)
@@ -143,7 +125,7 @@ class CheckDebugNativeLib {
         isRootingByFileExistenceAsync { isRootedByFile ->
             val isRootedByExec = isRootingByExecCmd()
             val isTestKey = isTestKeyBuild()
-            val isRootedByPackage = isRootedByPackageName(context)
+            val isRootedByPackage = isRootingByPackageManager(context)
             val result = isRootedByFile || isRootedByExec || isTestKey || isRootedByPackage
             Log.d("CheckDebug", "isRootedAsync: $result, isRootedByFile: $isRootedByFile, isRootedByExec: $isRootedByExec, isTestKey: $isTestKey, isRootedByPackage: $isRootedByPackage")
             callback(result)
