@@ -76,7 +76,8 @@ static bool isRooted() {
             "/system/sd/xbin/su",
             "/system/bin/failsafe/su",
             "/data/local/su",
-            "/su/bin/su"
+            "/su/bin/su",
+            "/sbin/magisk",
     };
 
     for (const std::string &path: rootedPaths) {
@@ -86,20 +87,27 @@ static bool isRooted() {
         }
     }
 
-    // Check for installed root management apps
+    std::string output;
+    FILE* pipe = popen("pm list packages", "r");
+    if (pipe) {
+        char buffer[128];
+        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+            output += buffer;
+        }
+        pclose(pipe);
+    }
+
+    // 검사할 패키지 리스트
     std::vector<std::string> rootApps = {
-            "com.noshufou.android.su",
-            "eu.chainfire.supersu",
-            "com.koushikdutta.superuser",
-            "com.thirdparty.superuser",
-            "com.topjohnwu.magisk",
-            "com.playground.rooting"
+            "com.noshufou.android.su", "eu.chainfire.supersu",
+            "com.koushikdutta.superuser", "com.thirdparty.superuser",
+            "com.topjohnwu.magisk", "com.playground.rooting"
     };
 
-    for (const std::string &packageName: rootApps) {
-        std::string cmd = std::string("pm list packages ").append(packageName) + " | grep " + packageName;
-        if (system(cmd.c_str()) == 0) {
-            LOGD("rooted package: %s", cmd.c_str());
+    // 루트 앱이 존재하는지 확인
+    for (const std::string& pkg : rootApps) {
+        if (output.find(pkg) != std::string::npos) {
+            LOGD("Rooted package: %s", pkg.c_str());
             return true;
         }
     }
@@ -478,4 +486,59 @@ extern "C"
 JNIEXPORT jboolean JNICALL
 Java_kr_ds_util_CheckDebugNativeLib_isRootingByExecCmd(JNIEnv *env, jobject) {
     return isCheckExecution() ? JNI_TRUE : JNI_FALSE;
+}
+
+struct CallbackData {
+    JavaVM *vm;
+    jobject callback;
+};
+
+void* rootingCheckThread(void* arg) {
+    CallbackData* data = static_cast<CallbackData*>(arg);
+    JavaVM* vm = data->vm;
+    jobject callback = data->callback;
+
+    JNIEnv* env;
+    vm->AttachCurrentThread(&env, nullptr);
+
+    bool rooted = isRooted();
+
+    jclass callbackClass = env->GetObjectClass(callback);
+    // For a Kotlin lambda (Boolean) -> Unit, the method is invoke(Ljava/lang/Object;)Ljava/lang/Object;
+    jmethodID invokeMethod = env->GetMethodID(callbackClass, "invoke", "(Ljava/lang/Object;)Ljava/lang/Object;");
+
+    if (invokeMethod) {
+        // Create a java.lang.Boolean object from the C++ bool
+        jclass booleanClass = env->FindClass("java/lang/Boolean");
+        jmethodID booleanConstructor = env->GetMethodID(booleanClass, "<init>", "(Z)V");
+        jobject booleanArg = env->NewObject(booleanClass, booleanConstructor, rooted);
+
+        // Call the invoke method
+        env->CallObjectMethod(callback, invokeMethod, booleanArg);
+
+        env->DeleteLocalRef(booleanArg);
+        env->DeleteLocalRef(booleanClass);
+    } else {
+        // Log an error if the method isn't found
+        LOGE("Could not find 'invoke' method on callback object");
+    }
+    env->DeleteLocalRef(callbackClass);
+
+    env->DeleteGlobalRef(callback);
+    delete data;
+
+    vm->DetachCurrentThread();
+    return nullptr;
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_kr_ds_util_CheckDebugNativeLib_isRootingByFileExistenceAsync(JNIEnv *env, jobject, jobject callback) {
+    pthread_t thread;
+    CallbackData* data = new CallbackData();
+    env->GetJavaVM(&data->vm);
+    data->callback = env->NewGlobalRef(callback);
+
+    pthread_create(&thread, nullptr, rootingCheckThread, data);
+    pthread_detach(thread);
 }
