@@ -33,11 +33,19 @@ class CheckDebugNativeLib {
     /**
      * 개발자 모드 활성화 여부
      */
-    fun isDevelopmentSettingsEnabled(context: Context) =
-        Settings.Global.getInt(
-            context.contentResolver,
-            Settings.Global.DEVELOPMENT_SETTINGS_ENABLED
-        ) != 0
+    fun isDevelopmentSettingsEnabled(context: Context): Boolean {
+        return try {
+            val isEnabled = Settings.Global.getInt(
+                context.contentResolver,
+                Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0
+            ) != 0
+            Log.d("CheckDebug", "isDevelopmentSettingsEnabled: $isEnabled")
+            isEnabled
+        } catch (e: Settings.SettingNotFoundException) {
+            Log.e("CheckDebug", e.localizedMessage, e)
+            false
+        }
+    }
 
     /**
      * USB Debugging 활성화 여부
@@ -99,6 +107,24 @@ class CheckDebugNativeLib {
      * 루팅 여부 체크 by Exec Cmd
      */
     private external fun isRootingByExecCmd(): Boolean
+
+    /**
+     * 루팅 여부 체크 by File Existence 비동기
+     */
+    private external fun isRootingByFileExistenceAsync(callback: (Boolean) -> Unit)
+
+    /**
+     * 루팅 여부 체크 비동기
+     */
+    fun isRootedAsync(callback: (Boolean) -> Unit) {
+        isRootingByFileExistenceAsync { isRootedByFile ->
+            val isRootedByExec = isRootingByExecCmd()
+            val isTestKey = isTestKeyBuild()
+            val result = isRootedByFile || isRootedByExec || isTestKey
+            Log.d("CheckDebug", "isRootedAsync: $result, isRootedByFile: $isRootedByFile, isRootedByExec: $isRootedByExec, isTestKey: $isTestKey")
+            callback(result)
+        }
+    }
 
     /***
      * Debugging 활성화 여부

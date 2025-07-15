@@ -1,9 +1,9 @@
 package com.example.checkdebugtoolsample
 
 import android.os.Bundle
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.example.checkdebugtoolsample.databinding.ActivityMainBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -16,76 +16,116 @@ import kotlin.system.exitProcess
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var binding: ActivityMainBinding
     private val checkDebugNativeLib by lazy {
         CheckDebugNativeLib()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         Timber.d("CheckDebugTool version=${checkDebugNativeLib.version()}")
 
-        val textState: TextView = findViewById(R.id.textState)
-
-        textState.text = when {
-            checkDebugNativeLib.isRooted() -> {
-                val message = "루팅됨"
-                Timber.d(message)
-                message
+        // Async Rooting Check
+        binding.rootingStatusAsync.text = "Async Rooting Status: Checking..."
+        checkDebugNativeLib.isRootedAsync { isRooted ->
+            val message = if (isRooted) {
+                "Async Rooting Status: Rooted"
+            } else {
+                "Async Rooting Status: Not Rooted"
             }
+            Timber.d(message)
+            binding.rootingStatusAsync.text = message
+        }
 
-            checkDebugNativeLib.isActiveDebugTool() -> {
-                val message = "디버깅 툴(커맨드 라인 or 프로세스 or 디버거 연결 or (Timer Checks)) 감지됨"
-                Timber.d(message)
-                message
+        // Sync Rooting Check
+        val isRootedSync = checkDebugNativeLib.isRooted()
+        val syncRootingMessage = if (isRootedSync) {
+            "Sync Rooting Status: Rooted"
+        } else {
+            "Sync Rooting Status: Not Rooted"
+        }
+        Timber.d(syncRootingMessage)
+        binding.rootingStatusSync.text = syncRootingMessage
+
+        // Debug Tool Check
+        val isActiveDebugTool = checkDebugNativeLib.isActiveDebugTool()
+        val debugToolMessage = if (isActiveDebugTool) {
+            "Debug Tool Status: Detected"
+        } else {
+            "Debug Tool Status: Not Detected"
+        }
+        Timber.d(debugToolMessage)
+        binding.debugToolStatus.text = debugToolMessage
+
+        // Debuggable Check
+        if (!BuildConfig.DEBUG) {
+            val isDebuggable = checkDebugNativeLib.isDebuggable(this)
+            val debuggableMessage = if (isDebuggable) {
+                "Debuggable Status: Enabled"
+            } else {
+                "Debuggable Status: Disabled"
             }
+            Timber.d(debuggableMessage)
+            binding.debuggableStatus.text = debuggableMessage
+        } else {
+            binding.debuggableStatus.text = "Debuggable Status: (Debug Build)"
+        }
 
-            !BuildConfig.DEBUG && checkDebugNativeLib.isDebuggable(this) -> {
-                val message = "디버깅 활성화 감지됨"
-                Timber.d(message)
-                message
+        // USB Debugging Check
+        if (!BuildConfig.DEBUG) {
+            val isUsbDebuggingEnabled = checkDebugNativeLib.isUsbDebuggingEnabled(this)
+            val usbDebuggingMessage = if (isUsbDebuggingEnabled) {
+                "USB Debugging Status: Enabled"
+            } else {
+                "USB Debugging Status: Disabled"
             }
+            Timber.d(usbDebuggingMessage)
+            binding.usbDebuggingStatus.text = usbDebuggingMessage
+        } else {
+            binding.usbDebuggingStatus.text = "USB Debugging Status: (Debug Build)"
+        }
 
-            !BuildConfig.DEBUG && checkDebugNativeLib.isUsbDebuggingEnabled(this) -> {
-                val message = "USB 디버깅 활성화 감지됨"
-                Timber.d(message)
-                message
+        // Development Mode Check
+        if (!BuildConfig.DEBUG) {
+            val isDevelopmentSettingsEnabled = checkDebugNativeLib.isDevelopmentSettingsEnabled(this)
+            val developmentModeMessage = if (isDevelopmentSettingsEnabled) {
+                "Development Mode Status: Enabled"
+            } else {
+                "Development Mode Status: Disabled"
             }
+            Timber.d(developmentModeMessage)
+            binding.developmentModeStatus.text = developmentModeMessage
+        } else {
+            binding.developmentModeStatus.text = "Development Mode Status: (Debug Build)"
+        }
 
-            !BuildConfig.DEBUG && checkDebugNativeLib.isDevelopmentSettingsEnabled(this) -> {
-                val message = "개발자 모드 활성화 감지됨"
-                Timber.d(message)
-                message
-            }
+        // Anti-Debug
+        if (!isRootedSync && !isActiveDebugTool) {
+            val thisActivity = WeakReference(this@MainActivity)
+            val callback = object : CheckDebugNativeLib.Callback {
+                override fun onDebug() {
+                    val msg = "!!! Anti Debug catch Debugging !!!"
+                    Timber.e(msg)
 
-            else -> {
-                val message = "정상"
-                val thisActivity = WeakReference(this@MainActivity)
-                val callback = object : CheckDebugNativeLib.Callback {
-                    override fun onDebug() {
-                        val msg = "!!! Anti Debug catch Debugging !!!"
-                        Timber.e(msg)
-
-                        CoroutineScope(Dispatchers.Main).launch {
-                            thisActivity.get()?.let { activity ->
-                                Toast.makeText(
-                                    activity,
-                                    "디버깅 툴(프로세스)이 감지되어 앱을 강제 종료합니다.",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                                activity.finish()
-                                delay(100)
-                                exitProcess(0)
-                            }
+                    CoroutineScope(Dispatchers.Main).launch {
+                        thisActivity.get()?.let { activity ->
+                            Toast.makeText(
+                                activity,
+                                "디버깅 툴(프로세스)이 감지되어 앱을 강제 종료합니다.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            activity.finish()
+                            delay(100)
+                            exitProcess(0)
                         }
                     }
-
                 }
-                CheckDebugNativeLib.startAntiDebugOnBackground(callback)
-                Timber.d(message)
-                message
             }
+            CheckDebugNativeLib.startAntiDebugOnBackground(callback)
+            Timber.d("Anti-debugging background process started.")
         }
     }
 
