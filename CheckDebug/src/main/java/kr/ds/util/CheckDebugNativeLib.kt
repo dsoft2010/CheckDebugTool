@@ -8,17 +8,17 @@ import android.provider.Settings
 import android.util.Log
 import androidx.annotation.Keep
 
-
 class CheckDebugNativeLib {
 
     /**
      * 루팅 여부 체크
      */
-    fun isRooted(): Boolean {
+    fun isRooted(context: Context): Boolean {
         val rootingByFileExistence = isRootingByFileExistence()
         val rootingByExecCmd = isRootingByExecCmd()
-        Log.d("CheckDebug", "isRootingByFileExistence: $rootingByFileExistence, isRootingByExecCmd: $rootingByExecCmd")
-        return rootingByFileExistence || rootingByExecCmd || isTestKeyBuild()
+        val rootingByPackageName = isRootingByPackageManager(context)
+        Log.d("CheckDebug", "isRootingByFileExistence: $rootingByFileExistence, isRootingByExecCmd: $rootingByExecCmd, isRootingByPackageName: $rootingByPackageName")
+        return rootingByFileExistence || rootingByExecCmd || isTestKeyBuild() || rootingByPackageName
     }
 
     /**
@@ -109,6 +109,11 @@ class CheckDebugNativeLib {
     private external fun isRootingByExecCmd(): Boolean
 
     /**
+     * 루팅 여부 체크 by PackageManager
+     */
+    private external fun isRootingByPackageManager(context: Context): Boolean
+
+    /**
      * 루팅 여부 체크 by File Existence 비동기
      */
     private external fun isRootingByFileExistenceAsync(callback: (Boolean) -> Unit)
@@ -116,12 +121,13 @@ class CheckDebugNativeLib {
     /**
      * 루팅 여부 체크 비동기
      */
-    fun isRootedAsync(callback: (Boolean) -> Unit) {
+    fun isRootedAsync(context: Context, callback: (Boolean) -> Unit) {
         isRootingByFileExistenceAsync { isRootedByFile ->
             val isRootedByExec = isRootingByExecCmd()
             val isTestKey = isTestKeyBuild()
-            val result = isRootedByFile || isRootedByExec || isTestKey
-            Log.d("CheckDebug", "isRootedAsync: $result, isRootedByFile: $isRootedByFile, isRootedByExec: $isRootedByExec, isTestKey: $isTestKey")
+            val isRootedByPackage = isRootingByPackageManager(context)
+            val result = isRootedByFile || isRootedByExec || isTestKey || isRootedByPackage
+            Log.d("CheckDebug", "isRootedAsync: $result, isRootedByFile: $isRootedByFile, isRootedByExec: $isRootedByExec, isTestKey: $isTestKey, isRootedByPackage: $isRootedByPackage")
             callback(result)
         }
     }
