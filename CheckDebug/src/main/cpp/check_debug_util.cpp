@@ -76,7 +76,8 @@ static bool isRooted() {
             "/system/sd/xbin/su",
             "/system/bin/failsafe/su",
             "/data/local/su",
-            "/su/bin/su"
+            "/su/bin/su",
+            "/sbin/magisk",
     };
 
     for (const std::string &path: rootedPaths) {
@@ -86,20 +87,27 @@ static bool isRooted() {
         }
     }
 
-    // Check for installed root management apps
+    std::string output;
+    FILE* pipe = popen("pm list packages", "r");
+    if (pipe) {
+        char buffer[128];
+        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+            output += buffer;
+        }
+        pclose(pipe);
+    }
+
+    // 검사할 패키지 리스트
     std::vector<std::string> rootApps = {
-            "com.noshufou.android.su",
-            "eu.chainfire.supersu",
-            "com.koushikdutta.superuser",
-            "com.thirdparty.superuser",
-            "com.topjohnwu.magisk",
-            "com.playground.rooting"
+            "com.noshufou.android.su", "eu.chainfire.supersu",
+            "com.koushikdutta.superuser", "com.thirdparty.superuser",
+            "com.topjohnwu.magisk", "com.playground.rooting"
     };
 
-    for (const std::string &packageName: rootApps) {
-        std::string cmd = std::string("pm list packages ").append(packageName) + " | grep " + packageName;
-        if (system(cmd.c_str()) == 0) {
-            LOGD("rooted package: %s", cmd.c_str());
+    // 루트 앱이 존재하는지 확인
+    for (const std::string& pkg : rootApps) {
+        if (output.find(pkg) != std::string::npos) {
+            LOGD("Rooted package: %s", pkg.c_str());
             return true;
         }
     }
