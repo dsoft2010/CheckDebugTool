@@ -496,8 +496,25 @@ void* rootingCheckThread(void* arg) {
     bool rooted = isRooted();
 
     jclass callbackClass = env->GetObjectClass(callback);
-    jmethodID onResultMethod = env->GetMethodID(callbackClass, "onResult", "(Z)V
-    env->CallVoidMethod(callback, onResultMethod, rooted);
+    // For a Kotlin lambda (Boolean) -> Unit, the method is invoke(Ljava/lang/Object;)Ljava/lang/Object;
+    jmethodID invokeMethod = env->GetMethodID(callbackClass, "invoke", "(Ljava/lang/Object;)Ljava/lang/Object;");
+
+    if (invokeMethod) {
+        // Create a java.lang.Boolean object from the C++ bool
+        jclass booleanClass = env->FindClass("java/lang/Boolean");
+        jmethodID booleanConstructor = env->GetMethodID(booleanClass, "<init>", "(Z)V");
+        jobject booleanArg = env->NewObject(booleanClass, booleanConstructor, rooted);
+
+        // Call the invoke method
+        env->CallObjectMethod(callback, invokeMethod, booleanArg);
+
+        env->DeleteLocalRef(booleanArg);
+        env->DeleteLocalRef(booleanClass);
+    } else {
+        // Log an error if the method isn't found
+        LOGE("Could not find 'invoke' method on callback object");
+    }
+    env->DeleteLocalRef(callbackClass);
 
     env->DeleteGlobalRef(callback);
     delete data;
