@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
 
         // Async Rooting Check
         binding.rootingStatusAsync.text = "Async Rooting Status: Checking..."
-        checkDebugNativeLib.isRootedAsync { isRooted ->
+        checkDebugNativeLib.isRootedAsync(this) { isRooted ->
             val message = if (isRooted) {
                 "Async Rooting Status: Rooted"
             } else {
@@ -41,7 +41,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Sync Rooting Check
-        val isRootedSync = checkDebugNativeLib.isRooted()
+        val isRootedSync = checkDebugNativeLib.isRooted(this)
         val syncRootingMessage = if (isRootedSync) {
             "Sync Rooting Status: Rooted"
         } else {

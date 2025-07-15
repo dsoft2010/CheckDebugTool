@@ -87,31 +87,6 @@ static bool isRooted() {
         }
     }
 
-    std::string output;
-    FILE* pipe = popen("pm list packages", "r");
-    if (pipe) {
-        char buffer[128];
-        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-            output += buffer;
-        }
-        pclose(pipe);
-    }
-
-    // 검사할 패키지 리스트
-    std::vector<std::string> rootApps = {
-            "com.noshufou.android.su", "eu.chainfire.supersu",
-            "com.koushikdutta.superuser", "com.thirdparty.superuser",
-            "com.topjohnwu.magisk", "com.playground.rooting"
-    };
-
-    // 루트 앱이 존재하는지 확인
-    for (const std::string& pkg : rootApps) {
-        if (output.find(pkg) != std::string::npos) {
-            LOGD("Rooted package: %s", pkg.c_str());
-            return true;
-        }
-    }
-
     return false;
 }
 
@@ -529,6 +504,46 @@ void* rootingCheckThread(void* arg) {
 
     vm->DetachCurrentThread();
     return nullptr;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_kr_ds_util_CheckDebugNativeLib_isRootingByPackageManager(JNIEnv *env, jobject, jobject context) {
+    jclass contextClass = env->GetObjectClass(context);
+    jmethodID getPackageManagerMethod = env->GetMethodID(contextClass, "getPackageManager", "()Landroid/content/pm/PackageManager;");
+    jobject packageManager = env->CallObjectMethod(context, getPackageManagerMethod);
+
+    jclass packageManagerClass = env->GetObjectClass(packageManager);
+    jmethodID getPackageInfoMethod = env->GetMethodID(packageManagerClass, "getPackageInfo", "(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;");
+
+    std::vector<std::string> rootPackages = {
+            "com.noshufou.android.su",
+            "eu.chainfire.supersu",
+            "com.koushikdutta.superuser",
+            "com.thirdparty.superuser",
+            "com.topjohnwu.magisk",
+            "com.playground.rooting"
+    };
+
+    for (const std::string& pkgName : rootPackages) {
+        jstring packageName = env->NewStringUTF(pkgName.c_str());
+        // The second argument to getPackageInfo is flags, 0 is fine for just checking existence.
+        jobject packageInfo = env->CallObjectMethod(packageManager, getPackageInfoMethod, packageName, 0);
+        env->DeleteLocalRef(packageName);
+
+        if (packageInfo != nullptr) {
+            env->DeleteLocalRef(packageInfo);
+            // Found a root package
+            return JNI_TRUE;
+        }
+        // An exception is thrown by getPackageInfo if the package is not found.
+        // We need to clear it to continue.
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+        }
+    }
+
+    return JNI_FALSE;
 }
 
 extern "C"
