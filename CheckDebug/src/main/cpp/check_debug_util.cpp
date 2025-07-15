@@ -87,31 +87,6 @@ static bool isRooted() {
         }
     }
 
-    std::string output;
-    FILE* pipe = popen("pm list packages", "r");
-    if (pipe) {
-        char buffer[128];
-        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-            output += buffer;
-        }
-        pclose(pipe);
-    }
-
-    // 검사할 패키지 리스트
-    std::vector<std::string> rootApps = {
-            "com.noshufou.android.su", "eu.chainfire.supersu",
-            "com.koushikdutta.superuser", "com.thirdparty.superuser",
-            "com.topjohnwu.magisk", "com.playground.rooting"
-    };
-
-    // 루트 앱이 존재하는지 확인
-    for (const std::string& pkg : rootApps) {
-        if (output.find(pkg) != std::string::npos) {
-            LOGD("Rooted package: %s", pkg.c_str());
-            return true;
-        }
-    }
-
     return false;
 }
 

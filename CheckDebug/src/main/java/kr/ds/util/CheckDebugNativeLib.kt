@@ -2,6 +2,7 @@ package kr.ds.util
 
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Debug
 import android.provider.Settings
@@ -14,11 +15,33 @@ class CheckDebugNativeLib {
     /**
      * 루팅 여부 체크
      */
-    fun isRooted(): Boolean {
+    fun isRooted(context: Context): Boolean {
         val rootingByFileExistence = isRootingByFileExistence()
         val rootingByExecCmd = isRootingByExecCmd()
-        Log.d("CheckDebug", "isRootingByFileExistence: $rootingByFileExistence, isRootingByExecCmd: $rootingByExecCmd")
-        return rootingByFileExistence || rootingByExecCmd || isTestKeyBuild()
+        val rootingByPackageName = isRootedByPackageName(context)
+        Log.d("CheckDebug", "isRootingByFileExistence: $rootingByFileExistence, isRootingByExecCmd: $rootingByExecCmd, isRootingByPackageName: $rootingByPackageName")
+        return rootingByFileExistence || rootingByExecCmd || isTestKeyBuild() || rootingByPackageName
+    }
+
+    private fun isRootedByPackageName(context: Context): Boolean {
+        val rootPackages = listOf(
+            "com.noshufou.android.su",
+            "eu.chainfire.supersu",
+            "com.koushikdutta.superuser",
+            "com.thirdparty.superuser",
+            "com.topjohnwu.magisk",
+            "com.playground.rooting"
+        )
+
+        val pm = context.packageManager
+        return rootPackages.any { packageName ->
+            try {
+                pm.getPackageInfo(packageName, 0)
+                true
+            } catch (e: PackageManager.NameNotFoundException) {
+                false
+            }
+        }
     }
 
     /**
@@ -116,12 +139,13 @@ class CheckDebugNativeLib {
     /**
      * 루팅 여부 체크 비동기
      */
-    fun isRootedAsync(callback: (Boolean) -> Unit) {
+    fun isRootedAsync(context: Context, callback: (Boolean) -> Unit) {
         isRootingByFileExistenceAsync { isRootedByFile ->
             val isRootedByExec = isRootingByExecCmd()
             val isTestKey = isTestKeyBuild()
-            val result = isRootedByFile || isRootedByExec || isTestKey
-            Log.d("CheckDebug", "isRootedAsync: $result, isRootedByFile: $isRootedByFile, isRootedByExec: $isRootedByExec, isTestKey: $isTestKey")
+            val isRootedByPackage = isRootedByPackageName(context)
+            val result = isRootedByFile || isRootedByExec || isTestKey || isRootedByPackage
+            Log.d("CheckDebug", "isRootedAsync: $result, isRootedByFile: $isRootedByFile, isRootedByExec: $isRootedByExec, isTestKey: $isTestKey, isRootedByPackage: $isRootedByPackage")
             callback(result)
         }
     }
