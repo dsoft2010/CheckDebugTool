@@ -6,7 +6,7 @@
 
 ## 1. 환경 설정
 
-### 1. *루트* build.gradle 파일에 
+### 1. *루트*  build.gradle 파일에 
 
 [jitpack.io](https://jitpack.io) 로 배포 되어 있어서 
 
@@ -33,7 +33,7 @@ dependencyResolutionManagement {
     }
 }
 ```
-### 2. 사용자 하고자 하는 *앱* build.gradle 에 아래와 같이 추가하고
+### 2. 사용자 하고자 하는 *앱*  build.gradle 에 아래와 같이 추가하고
 ```build.gradle
 dependencies {
   // 아래 코드 추가 
@@ -50,59 +50,90 @@ private val checkDebugNativeLib by lazy {
 ```
 
 아래와 같이 사용하시면 되고, 샘플 코드 참고하셔도 됩니다.
+
+### 1. 루팅 체크
 ```kotlin
-textState.text = when {
-     checkDebugNativeLib.isRootedAsync(this) { isRootedAsync ->
-         val message = if (isRootedAsync) {
-             "Async Rooting Status: Rooted"
-         } else {
-             "Async Rooting Status: Not Rooted"
-         }
-         Timber.d(message)
-         message
+// Async Rooting Check
+binding.rootingStatusAsync.text = "Async Rooting Status: Checking..."
+checkDebugNativeLib.isRootedAsync(this) { isRooted ->
+    val message = if (isRooted) {
+	"Async Rooting Status: Rooted"
+    } else {
+	"Async Rooting Status: Not Rooted"
     }
-
-    checkDebugNativeLib.isRooted(this) -> {
-        val message = "루팅됨"
-        Timber.d(message)
-        message
-    }
-
-    checkDebugNativeLib.isActiveDebugTool() -> {
-        val message = "디버깅 툴(커맨드 라인 or 프로세스 or 디버거 연결 or (Timer Checks)) 감지됨"
-        Timber.d(message)
-        message
-    }
-
-    !BuildConfig.DEBUG && checkDebugNativeLib.isDebuggable(this) -> {
-	val message = "디버깅 활성화 감지됨"
-	Timber.d(message)
-	message
-    }
-    
-    !BuildConfig.DEBUG && checkDebugNativeLib.isUsbDebuggingEnabled(this) -> {
-        val message = "USB 디버깅 활성화 감지됨"
-        Timber.d(message)
-        message
-    }
-
-    !BuildConfig.DEBUG && checkDebugNativeLib.isDevelopmentSettingsEnabled(this) -> {
-        val message = "개발자 모드 활성화 감지됨"
-        Timber.d(message)
-        message
-    }
-
-    else -> {
-        val message = "정상"
-        Timber.d(message)
-        message
-    }
+    Timber.d(message)
+    binding.rootingStatusAsync.text = message
 }
+
+// Sync Rooting Check
+val isRootedSync = checkDebugNativeLib.isRooted(this)
+val syncRootingMessage = if (isRootedSync) {
+    "Sync Rooting Status: Rooted"
+} else {
+    "Sync Rooting Status: Not Rooted"
+}
+Timber.d(syncRootingMessage)
+binding.rootingStatusSync.text = syncRootingMessage
 ```
 
-아래는 실시간 디버깅 툴 감지 샘플 코드 사용법
+### 2. 디버깅 상태 확인 
 ```kotlin
-    override onCreate(savedInstanceState: Bundle?) {
+	// Debug Tool Check
+        val isActiveDebugTool = checkDebugNativeLib.isActiveDebugTool()
+        val debugToolMessage = if (isActiveDebugTool) {
+            "Debug Tool Status: Detected"
+        } else {
+            "Debug Tool Status: Not Detected"
+        }
+        Timber.d(debugToolMessage)
+        binding.debugToolStatus.text = debugToolMessage
+
+        // Debuggable Check
+        if (!BuildConfig.DEBUG) {
+            val isDebuggable = checkDebugNativeLib.isDebuggable(this)
+            val debuggableMessage = if (isDebuggable) {
+                "Debuggable Status: Enabled"
+            } else {
+                "Debuggable Status: Disabled"
+            }
+            Timber.d(debuggableMessage)
+            binding.debuggableStatus.text = debuggableMessage
+        } else {
+            binding.debuggableStatus.text = "Debuggable Status: (Debug Build)"
+        }
+
+        // USB Debugging Check
+        if (!BuildConfig.DEBUG) {
+            val isUsbDebuggingEnabled = checkDebugNativeLib.isUsbDebuggingEnabled(this)
+            val usbDebuggingMessage = if (isUsbDebuggingEnabled) {
+                "USB Debugging Status: Enabled"
+            } else {
+                "USB Debugging Status: Disabled"
+            }
+            Timber.d(usbDebuggingMessage)
+            binding.usbDebuggingStatus.text = usbDebuggingMessage
+        } else {
+            binding.usbDebuggingStatus.text = "USB Debugging Status: (Debug Build)"
+        }
+
+        // Development Mode Check
+        if (!BuildConfig.DEBUG) {
+            val isDevelopmentSettingsEnabled = checkDebugNativeLib.isDevelopmentSettingsEnabled(this)
+            val developmentModeMessage = if (isDevelopmentSettingsEnabled) {
+                "Development Mode Status: Enabled"
+            } else {
+                "Development Mode Status: Disabled"
+            }
+            Timber.d(developmentModeMessage)
+            binding.developmentModeStatus.text = developmentModeMessage
+        } else {
+            binding.developmentModeStatus.text = "Development Mode Status: (Debug Build)"
+        }
+```
+
+### 3. 수동 실시간 디버깅 툴 감지
+```kotlin
+    override fun onCreate(savedInstanceState: Bundle?) {
 	// Anti-Debug
         if (!isRootedSync && !isActiveDebugTool) {
             val thisActivity = WeakReference(this@MainActivity)
