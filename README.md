@@ -177,3 +177,4 @@ binding.rootingStatusSync.text = syncRootingMessage
 - 1.2.1 이상 버전은 targetSDK 35 대응을 위한 16KB 페이지 크기 지원이 추가되었습니다.
 - 1.2.2 버전에서는 isRooted() 함수 내부 처리 속도가 좀 개선(pm list package 한번만 수행) 되었습니다. 그리고 ANR 보고가 있어서, 비동기로 사용할 수 있는 isRootedAsync() 함수가 추가되었습니다.
 - 1.2.3 버전에서는 isRooted(**context: Context**) 형태로 변경되고, 기존 pm list pacakges 대신 PackageManager 를 통해 루팅 앱 설치 여부를 가져오도록 변경되었습니다. isRootedAsync(**context: Context**) 함수도 PackageManager 사용하기 위해 context 파라미터가 추가 되었습니다.
+- 1.2.5 버전에서는 불필요한 난독화 제거되었습니다. (관련 이슈: Type a.a is defined multiple times)
