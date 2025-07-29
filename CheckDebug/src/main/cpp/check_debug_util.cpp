@@ -463,52 +463,7 @@ Java_kr_ds_util_CheckDebugNativeLib_isRootingByExecCmd(JNIEnv *env, jobject) {
     return isCheckExecution() ? JNI_TRUE : JNI_FALSE;
 }
 
-struct CallbackData {
-    JavaVM *vm;
-    jobject callback;
-};
-
-void* rootingCheckThread(void* arg) {
-    CallbackData* data = static_cast<CallbackData*>(arg);
-    JavaVM* vm = data->vm;
-    jobject callback = data->callback;
-
-    JNIEnv* env;
-    vm->AttachCurrentThread(&env, nullptr);
-
-    bool rooted = isRooted();
-
-    jclass callbackClass = env->GetObjectClass(callback);
-    // For a Kotlin lambda (Boolean) -> Unit, the method is invoke(Ljava/lang/Object;)Ljava/lang/Object;
-    jmethodID invokeMethod = env->GetMethodID(callbackClass, "invoke", "(Ljava/lang/Object;)Ljava/lang/Object;");
-
-    if (invokeMethod) {
-        // Create a java.lang.Boolean object from the C++ bool
-        jclass booleanClass = env->FindClass("java/lang/Boolean");
-        jmethodID booleanConstructor = env->GetMethodID(booleanClass, "<init>", "(Z)V");
-        jobject booleanArg = env->NewObject(booleanClass, booleanConstructor, rooted);
-
-        // Call the invoke method
-        env->CallObjectMethod(callback, invokeMethod, booleanArg);
-
-        env->DeleteLocalRef(booleanArg);
-        env->DeleteLocalRef(booleanClass);
-    } else {
-        // Log an error if the method isn't found
-        LOGE("Could not find 'invoke' method on callback object");
-    }
-    env->DeleteLocalRef(callbackClass);
-
-    env->DeleteGlobalRef(callback);
-    delete data;
-
-    vm->DetachCurrentThread();
-    return nullptr;
-}
-
-extern "C"
-JNIEXPORT jboolean JNICALL
-Java_kr_ds_util_CheckDebugNativeLib_isRootingByPackageManager(JNIEnv *env, jobject, jobject context) {
+bool isRootingByPackageManagerInternal(JNIEnv *env, jobject context) {
     jclass contextClass = env->GetObjectClass(context);
     jmethodID getPackageManagerMethod = env->GetMethodID(contextClass, "getPackageManager", "()Landroid/content/pm/PackageManager;");
     jobject packageManager = env->CallObjectMethod(context, getPackageManagerMethod);
@@ -534,7 +489,7 @@ Java_kr_ds_util_CheckDebugNativeLib_isRootingByPackageManager(JNIEnv *env, jobje
         if (packageInfo != nullptr) {
             env->DeleteLocalRef(packageInfo);
             // Found a root package
-            return JNI_TRUE;
+            return true;
         }
         // An exception is thrown by getPackageInfo if the package is not found.
         // We need to clear it to continue.
@@ -543,17 +498,100 @@ Java_kr_ds_util_CheckDebugNativeLib_isRootingByPackageManager(JNIEnv *env, jobje
         }
     }
 
-    return JNI_FALSE;
+    return false;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_kr_ds_util_CheckDebugNativeLib_isRootingByPackageManager(JNIEnv *env, jobject, jobject context) {
+    return isRootingByPackageManagerInternal(env, context);
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_kr_ds_util_CheckDebugNativeLib_isRooted(JNIEnv *env, jobject thiz, jobject context) {
+    jclass buildClass = env->FindClass("android/os/Build");
+    jfieldID tagsField = env->GetStaticFieldID(buildClass, "TAGS", "Ljava/lang/String;");
+    jstring tags = (jstring)env->GetStaticObjectField(buildClass, tagsField);
+    const char *tagsChars = env->GetStringUTFChars(tags, nullptr);
+    std::string tagsString(tagsChars);
+    env->ReleaseStringUTFChars(tags, tagsChars);
+
+    bool byFile = isRooted();
+    bool byExec = isCheckExecution();
+    bool isTestKey = (tagsString.find("test-keys") != std::string::npos);
+    bool byPackage = isRootingByPackageManagerInternal(env, context);
+
+    LOGD("isRooted: byFile=%d, byExec=%d, isTestKey=%d, byPackage=%d", byFile, byExec, isTestKey, byPackage);
+
+    return byFile || byExec || isTestKey || byPackage;
+}
+
+struct RootedCallbackData {
+    JavaVM *vm;
+    jobject context;
+    jobject callback;
+};
+
+void* isRootedAsyncThread(void* arg) {
+    RootedCallbackData* data = static_cast<RootedCallbackData*>(arg);
+    JavaVM* vm = data->vm;
+    jobject context = data->context;
+    jobject callback = data->callback;
+
+    JNIEnv* env;
+    vm->AttachCurrentThread(&env, nullptr);
+
+    jclass buildClass = env->FindClass("android/os/Build");
+    jfieldID tagsField = env->GetStaticFieldID(buildClass, "TAGS", "Ljava/lang/String;");
+    jstring tags = (jstring)env->GetStaticObjectField(buildClass, tagsField);
+    const char *tagsChars = env->GetStringUTFChars(tags, nullptr);
+    std::string tagsString(tagsChars);
+    env->ReleaseStringUTFChars(tags, tagsChars);
+
+    bool byFile = isRooted();
+    bool byExec = isCheckExecution();
+    bool isTestKey = (tagsString.find("test-keys") != std::string::npos);
+    bool byPackage = isRootingByPackageManagerInternal(env, context);
+
+    LOGD("isRootedAsync: byFile=%d, byExec=%d, isTestKey=%d, byPackage=%d", byFile, byExec, isTestKey, byPackage);
+
+    bool rooted = byFile || byExec || isTestKey || byPackage;
+
+    jclass callbackClass = env->GetObjectClass(callback);
+    jmethodID invokeMethod = env->GetMethodID(callbackClass, "invoke", "(Ljava/lang/Object;)Ljava/lang/Object;");
+
+    if (invokeMethod) {
+        jclass booleanClass = env->FindClass("java/lang/Boolean");
+        jmethodID booleanConstructor = env->GetMethodID(booleanClass, "<init>", "(Z)V");
+        jobject booleanArg = env->NewObject(booleanClass, booleanConstructor, rooted);
+
+        env->CallObjectMethod(callback, invokeMethod, booleanArg);
+
+        env->DeleteLocalRef(booleanArg);
+        env->DeleteLocalRef(booleanClass);
+    } else {
+        LOGE("Could not find 'invoke' method on callback object");
+    }
+
+    env->DeleteGlobalRef(context);
+    env->DeleteGlobalRef(callback);
+    env->DeleteLocalRef(callbackClass);
+    delete data;
+
+    vm->DetachCurrentThread();
+    return nullptr;
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_kr_ds_util_CheckDebugNativeLib_isRootingByFileExistenceAsync(JNIEnv *env, jobject, jobject callback) {
+Java_kr_ds_util_CheckDebugNativeLib_isRootedAsync(JNIEnv *env, jobject, jobject context, jobject callback) {
     pthread_t thread;
-    CallbackData* data = new CallbackData();
+    auto* data = new RootedCallbackData();
     env->GetJavaVM(&data->vm);
+    data->context = env->NewGlobalRef(context);
     data->callback = env->NewGlobalRef(callback);
 
-    pthread_create(&thread, nullptr, rootingCheckThread, data);
+    pthread_create(&thread, nullptr, isRootedAsyncThread, data);
     pthread_detach(thread);
 }

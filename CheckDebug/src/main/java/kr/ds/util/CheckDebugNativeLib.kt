@@ -13,13 +13,7 @@ class CheckDebugNativeLib {
     /**
      * 루팅 여부 체크
      */
-    fun isRooted(context: Context): Boolean {
-        val rootingByFileExistence = isRootingByFileExistence()
-        val rootingByExecCmd = isRootingByExecCmd()
-        val rootingByPackageName = isRootingByPackageManager(context)
-        Log.d("CheckDebug", "isRootingByFileExistence: $rootingByFileExistence, isRootingByExecCmd: $rootingByExecCmd, isRootingByPackageName: $rootingByPackageName")
-        return rootingByFileExistence || rootingByExecCmd || isTestKeyBuild() || rootingByPackageName
-    }
+    external fun isRooted(context: Context): Boolean
 
     /**
      * 디버깅 툴 활성화 여부
@@ -88,9 +82,7 @@ class CheckDebugNativeLib {
         return result
     }
 
-    private fun isTestKeyBuild(): Boolean {
-        return Build.TAGS?.contains("test-keys") ?: false
-    }
+    
 
     /**
      * Native 라이브러리 버전
@@ -98,39 +90,12 @@ class CheckDebugNativeLib {
      */
     external fun version(): Int
 
-    /**
-     * 루팅 여부 체크 by File Existence
-     */
-    private external fun isRootingByFileExistence(): Boolean
-
-    /**
-     * 루팅 여부 체크 by Exec Cmd
-     */
-    private external fun isRootingByExecCmd(): Boolean
-
-    /**
-     * 루팅 여부 체크 by PackageManager
-     */
-    private external fun isRootingByPackageManager(context: Context): Boolean
-
-    /**
-     * 루팅 여부 체크 by File Existence 비동기
-     */
-    private external fun isRootingByFileExistenceAsync(callback: (Boolean) -> Unit)
+    
 
     /**
      * 루팅 여부 체크 비동기
      */
-    fun isRootedAsync(context: Context, callback: (Boolean) -> Unit) {
-        isRootingByFileExistenceAsync { isRootedByFile ->
-            val isRootedByExec = isRootingByExecCmd()
-            val isTestKey = isTestKeyBuild()
-            val isRootedByPackage = isRootingByPackageManager(context)
-            val result = isRootedByFile || isRootedByExec || isTestKey || isRootedByPackage
-            Log.d("CheckDebug", "isRootedAsync: $result, isRootedByFile: $isRootedByFile, isRootedByExec: $isRootedByExec, isTestKey: $isTestKey, isRootedByPackage: $isRootedByPackage")
-            callback(result)
-        }
-    }
+    external fun isRootedAsync(context: Context, callback: (Boolean) -> Unit)
 
     /***
      * Debugging 활성화 여부
