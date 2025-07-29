@@ -1,32 +1,23 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Keep the public API of CheckDebugNativeLib, allowing private members to be obfuscated.
+-keep class kr.ds.util.CheckDebugNativeLib {
+    public *;
+}
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Keep the nested Callback interface, which is part of the public API.
+-keep interface kr.ds.util.CheckDebugNativeLib$Callback {
+    *;
+}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Keep the names of all native methods (both public and private).
+# JNI depends on these exact method names to link from C++ to Kotlin/Java.
+-keepclassmembers class kr.ds.util.CheckDebugNativeLib {
+    native <methods>;
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
--keep class kr.ds.util.CheckDebugNativeLib
+# Keep the Companion object's members, as they are used for static-like access.
 -keepclassmembers class kr.ds.util.CheckDebugNativeLib$Companion {
     public *;
 }
--keepclassmembers class kr.ds.util.CheckDebugNativeLib {
-    public *;
-}
 
-# Please add these rules to your existing keep rules in order to suppress warnings.
-# This is generated automatically by the Android Gradle plugin.
+# Suppress warnings for StringConcatFactory, which is a common issue.
 -dontwarn java.lang.invoke.StringConcatFactory
