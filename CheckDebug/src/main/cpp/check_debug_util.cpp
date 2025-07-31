@@ -476,11 +476,17 @@ bool isRootingByPackageManagerInternal(JNIEnv *env, jobject context) {
 
     std::vector<std::string> rootPackages = {
             "com.noshufou.android.su",
+            "com.noshufou.android.su.elite",
             "eu.chainfire.supersu",
             "com.koushikdutta.superuser",
             "com.thirdparty.superuser",
+            "com.yellowes.su",
             "com.topjohnwu.magisk",
-            "com.playground.rooting"
+            "com.kingroot.kinguser",
+            "com.kingo.root",
+            "com.smedialink.oneclickroot",
+            "com.zhiqupk.root.global",
+            "com.alephzain.framaroot"
     };
 
     if (sdkInt >= 33) { // TIRAMISU
