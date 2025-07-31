@@ -28,13 +28,6 @@ bool fileExists(const std::string &filePath) {
     return ( stat( filePath.c_str(), &info ) == 0 );
 }
 
-bool checkRootPath(const std::string &path) {
-    struct stat info;
-    if (stat(path.c_str(), &info) != 0)
-        return false;
-    return (info.st_mode & S_IFDIR) != 0;
-}
-
 std::string findExecutable(const std::string &command) {
     std::string path;
     std::string cmd = "which " + command + " 2>/dev/null";
@@ -81,7 +74,7 @@ static bool isRooted() {
     };
 
     for (const std::string &path: rootedPaths) {
-        if (fileExists(path) || checkRootPath(path)) {
+        if (fileExists(path)) {
             LOGD("rooted path: %s", (path.c_str()));
             return true;
         }
