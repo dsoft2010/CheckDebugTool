@@ -464,12 +464,15 @@ Java_kr_ds_util_CheckDebugNativeLib_isRootingByExecCmd(JNIEnv *env, jobject) {
 }
 
 bool isRootingByPackageManagerInternal(JNIEnv *env, jobject context) {
+    jclass buildVersionClass = env->FindClass("android/os/Build$VERSION");
+    jfieldID sdkIntField = env->GetStaticFieldID(buildVersionClass, "SDK_INT", "I");
+    int sdkInt = env->GetStaticIntField(buildVersionClass, sdkIntField);
+
     jclass contextClass = env->GetObjectClass(context);
     jmethodID getPackageManagerMethod = env->GetMethodID(contextClass, "getPackageManager", "()Landroid/content/pm/PackageManager;");
     jobject packageManager = env->CallObjectMethod(context, getPackageManagerMethod);
 
     jclass packageManagerClass = env->GetObjectClass(packageManager);
-    jmethodID getPackageInfoMethod = env->GetMethodID(packageManagerClass, "getPackageInfo", "(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;");
 
     std::vector<std::string> rootPackages = {
             "com.noshufou.android.su",
@@ -480,21 +483,41 @@ bool isRootingByPackageManagerInternal(JNIEnv *env, jobject context) {
             "com.playground.rooting"
     };
 
-    for (const std::string& pkgName : rootPackages) {
-        jstring packageName = env->NewStringUTF(pkgName.c_str());
-        // The second argument to getPackageInfo is flags, 0 is fine for just checking existence.
-        jobject packageInfo = env->CallObjectMethod(packageManager, getPackageInfoMethod, packageName, 0);
-        env->DeleteLocalRef(packageName);
+    if (sdkInt >= 33) { // TIRAMISU
+        jmethodID getPackageInfoMethod = env->GetMethodID(packageManagerClass, "getPackageInfo", "(Ljava/lang/String;Landroid/content/pm/PackageManager$PackageInfoFlags;)Landroid/content/pm/PackageInfo;");
+        jclass packageInfoFlagsClass = env->FindClass("android/content/pm/PackageManager$PackageInfoFlags");
+        jmethodID ofMethod = env->GetStaticMethodID(packageInfoFlagsClass, "of", "(J)Landroid/content/pm/PackageManager$PackageInfoFlags;");
+        jobject flags = env->CallStaticObjectMethod(packageInfoFlagsClass, ofMethod, 0LL);
 
-        if (packageInfo != nullptr) {
-            env->DeleteLocalRef(packageInfo);
-            // Found a root package
-            return true;
+        for (const std::string& pkgName : rootPackages) {
+            jstring packageName = env->NewStringUTF(pkgName.c_str());
+            jobject packageInfo = env->CallObjectMethod(packageManager, getPackageInfoMethod, packageName, flags);
+            env->DeleteLocalRef(packageName);
+
+            if (packageInfo != nullptr) {
+                env->DeleteLocalRef(packageInfo);
+                env->DeleteLocalRef(flags);
+                return true;
+            }
+            if (env->ExceptionCheck()) {
+                env->ExceptionClear();
+            }
         }
-        // An exception is thrown by getPackageInfo if the package is not found.
-        // We need to clear it to continue.
-        if (env->ExceptionCheck()) {
-            env->ExceptionClear();
+        env->DeleteLocalRef(flags);
+    } else {
+        jmethodID getPackageInfoMethod = env->GetMethodID(packageManagerClass, "getPackageInfo", "(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;");
+        for (const std::string& pkgName : rootPackages) {
+            jstring packageName = env->NewStringUTF(pkgName.c_str());
+            jobject packageInfo = env->CallObjectMethod(packageManager, getPackageInfoMethod, packageName, 0);
+            env->DeleteLocalRef(packageName);
+
+            if (packageInfo != nullptr) {
+                env->DeleteLocalRef(packageInfo);
+                return true;
+            }
+            if (env->ExceptionCheck()) {
+                env->ExceptionClear();
+            }
         }
     }
 
